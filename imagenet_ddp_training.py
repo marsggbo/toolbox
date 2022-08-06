@@ -31,12 +31,13 @@ from hyperbox.utils.utils import load_json
 from hyperbox.utils.logger import get_logger
 
 
+model_names = ['proxylessnas', 'nb201', 'spos', 'ofa']
 # model_names += sorted(name for name in models.__dict__
 #     if name.islower() and not name.startswith("__")
 #     and callable(models.__dict__[name]))
 
-model_names = ['proxylessnas', 'nb201', 'spos', 'ofa']
 hx_net_path = os.path.dirname(networks.__file__).replace('networks', 'configs')
+
 arch2cfg = lambda name: os.path.join(hx_net_path, f'model/network_cfg/{name}.yaml')
 arch_maps = {name: arch2cfg(name) for name in model_names}
 
@@ -278,7 +279,8 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.evaluate:
         validate(val_loader, model, criterion, args)
         return
-
+    if args.debug:
+        args.epochs = 2
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -325,6 +327,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
     end = time.time()
     for i, (images, target) in enumerate(train_loader):
+        if args.debug and i == 10:
+            break
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -362,6 +366,8 @@ def validate(val_loader, model, criterion, args):
         with torch.no_grad():
             end = time.time()
             for i, (images, target) in enumerate(loader):
+                if args.debug and i == 10:
+                    break
                 i = base_progress + i
                 if args.gpu is not None:
                     images = images.cuda(args.gpu, non_blocking=True)
